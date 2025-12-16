@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     
     permissions:
-      contents: read
+      contents: write
+      pull-requests: write
     
     steps:
       - name: Checkout repository
@@ -97,3 +98,53 @@ jobs:
           name: gh-pages
           path: gh-pages.zip
           retention-days: 90
+      
+      - name: Create pull request to gh-pages branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create a unique branch name for this update
+          BRANCH_NAME="update-gh-pages-$(date +%Y%m%d-%H%M%S)"
+          
+          # Check if gh-pages branch exists remotely
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "gh-pages branch exists, checking it out..."
+            git fetch origin gh-pages
+            git checkout -b "$BRANCH_NAME" origin/gh-pages
+          else
+            echo "gh-pages branch does not exist, creating orphan branch..."
+            git checkout --orphan "$BRANCH_NAME"
+            git rm -rf . || true
+          fi
+          
+          # Copy contents from gh-pages directory to root
+          echo "Copying contents from gh-pages directory..."
+          cp -r gh-pages/* .
+          
+          # Add and commit changes
+          git add .
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git commit -m "Update Web Chat CDN files from microsoft/botframework-webchat releases"
+          
+          # Push the branch
+          git push origin "$BRANCH_NAME"
+          
+          # Create pull request
+          gh pr create \
+            --base gh-pages \
+            --head "$BRANCH_NAME" \
+            --title "Update Web Chat CDN files" \
+            --body "This PR updates the Web Chat CDN files from the latest releases of microsoft/botframework-webchat.
+
+          **Workflow run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          The files have been extracted and organized by version under \`botframework-webchat/{version}/\`."
