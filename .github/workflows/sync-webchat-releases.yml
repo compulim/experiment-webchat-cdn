@@ -1,0 +1,78 @@
+name: Sync Web Chat Releases
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-releases:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Fetch and extract releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Create gh-pages directory
+          mkdir -p gh-pages/botframework-webchat
+          
+          # Fetch all releases from microsoft/botframework-webchat using gh CLI
+          echo "Fetching releases from microsoft/botframework-webchat..."
+          
+          # Get list of all releases (tag names)
+          gh release list --repo microsoft/botframework-webchat --limit 1000 | while read -r line; do
+            # Extract tag name (first column)
+            tag_name=$(echo "$line" | awk '{print $1}')
+            
+            # Remove 'v' prefix if present (e.g., v4.18.0 -> 4.18.0)
+            version="${tag_name#v}"
+            
+            echo "Processing release: $tag_name (version: $version)"
+            
+            # Construct expected tarball name
+            tarball_name="botframework-webchat-${version}.tgz"
+            
+            # Create version directory
+            version_dir="gh-pages/botframework-webchat/$version"
+            mkdir -p "$version_dir"
+            
+            # Try to download the tarball for this release
+            tarball_file="/tmp/${tarball_name}"
+            
+            if gh release download "$tag_name" --repo microsoft/botframework-webchat --pattern "$tarball_name" --output "$tarball_file" 2>/dev/null; then
+              echo "  ✓ Downloaded $tarball_name"
+              
+              # Extract tarball to version directory
+              echo "  Extracting to $version_dir..."
+              tar -xzf "$tarball_file" -C "$version_dir" --strip-components=1
+              
+              # Clean up tarball
+              rm "$tarball_file"
+              
+              echo "  ✓ Completed $version"
+            else
+              echo "  ⚠ No $tarball_name found for $tag_name"
+              # Clean up the empty directory if extraction failed
+              rmdir "$version_dir" 2>/dev/null || true
+            fi
+          done
+          
+          echo "All releases processed."
+      
+      - name: Create zip archive
+        run: |
+          echo "Creating zip archive of gh-pages directory..."
+          cd gh-pages
+          zip -r ../gh-pages.zip .
+          cd ..
+          echo "Archive created: gh-pages.zip"
+          ls -lh gh-pages.zip
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gh-pages
+          path: gh-pages.zip
+          retention-days: 90
