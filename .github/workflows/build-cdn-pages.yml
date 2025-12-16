@@ -1,0 +1,23 @@
+name: Build Pages for CDN
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  get-releases:
+    name: Get releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --repo microsoft/botframework-webchat --limit 1000 >> releases.json
+          cat releases.json
+      - uses: actions/upload-artifact@v6
+        with:
+          name: releases
+          path: releases.json
