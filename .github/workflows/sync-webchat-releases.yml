@@ -31,32 +31,46 @@ jobs:
             
             echo "Processing release: $tag_name (version: $version)"
             
-            # Construct expected tarball name
-            tarball_name="botframework-webchat-${version}.tgz"
-            
             # Create version directory
             version_dir="gh-pages/botframework-webchat/$version"
             mkdir -p "$version_dir"
             
-            # Try to download the tarball for this release
-            tarball_file="/tmp/${tarball_name}"
+            # Create temp directory for this release
+            temp_dir="/tmp/release-$version"
+            mkdir -p "$temp_dir"
             
-            if gh release download "$tag_name" --repo microsoft/botframework-webchat --pattern "$tarball_name" --output "$tarball_file" 2>/dev/null; then
-              echo "  ✓ Downloaded $tarball_name"
+            # Download all tarballs (.tgz files) for this release
+            echo "  Downloading all tarballs..."
+            if gh release download "$tag_name" --repo microsoft/botframework-webchat --pattern "*.tgz" --dir "$temp_dir" 2>&1; then
+              # Count downloaded files
+              tarball_count=$(find "$temp_dir" -name "*.tgz" | wc -l)
               
-              # Extract tarball to version directory
-              echo "  Extracting to $version_dir..."
-              tar -xzf "$tarball_file" -C "$version_dir" --strip-components=1
-              
-              # Clean up tarball
-              rm "$tarball_file"
-              
-              echo "  ✓ Completed $version"
+              if [ "$tarball_count" -gt 0 ]; then
+                echo "  ✓ Downloaded $tarball_count tarball(s)"
+                
+                # Extract each tarball to the version directory
+                for tarball in "$temp_dir"/*.tgz; do
+                  if [ -f "$tarball" ]; then
+                    tarball_basename=$(basename "$tarball")
+                    echo "    Extracting $tarball_basename..."
+                    tar -xzf "$tarball" -C "$version_dir" --strip-components=1 2>&1 || echo "    ⚠ Failed to extract $tarball_basename"
+                  fi
+                done
+                
+                echo "  ✓ Completed $version"
+              else
+                echo "  ⚠ No tarballs found for $tag_name"
+                # Clean up the empty directory
+                rmdir "$version_dir" 2>/dev/null || true
+              fi
             else
-              echo "  ⚠ No $tarball_name found for $tag_name"
-              # Clean up the empty directory if extraction failed
+              echo "  ⚠ Failed to download tarballs for $tag_name"
+              # Clean up the empty directory
               rmdir "$version_dir" 2>/dev/null || true
             fi
+            
+            # Clean up temp directory
+            rm -rf "$temp_dir"
           done
           
           echo "All releases processed."
