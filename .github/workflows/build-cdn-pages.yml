@@ -9,6 +9,8 @@ permissions:
 jobs:
   get-releases:
     name: Get releases
+    outputs:
+      tags: steps.get-tags.outputs.tags
     runs-on: ubuntu-latest
 
     steps:
@@ -19,9 +21,27 @@ jobs:
             --json createdAt,isDraft,isLatest,isPrerelease,name,publishedAt,tagName \
             --limit 1000 \
             --repo microsoft/botframework-webchat \
+            | jq -r '.' \
             | tee releases.json
 
       - uses: actions/upload-artifact@v6
         with:
           name: releases
           path: releases.json
+
+      - id: get-tags
+        run: |
+          echo tags=$(cat releases.json | jq -r 'map({ tag: .tagName })')
+            | tee --append $GITHUB_OUTPUT
+
+  download-release:
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
+    needs:
+      - get-releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: |
+          echo ${{ matrix.tag }}
