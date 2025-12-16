@@ -35,9 +35,8 @@ jobs:
             version_dir="gh-pages/botframework-webchat/$version"
             mkdir -p "$version_dir"
             
-            # Create temp directory for this release
-            temp_dir="/tmp/release-$version"
-            mkdir -p "$temp_dir"
+            # Create unique temp directory for this release
+            temp_dir=$(mktemp -d -t "release-${version}-XXXXXX")
             
             # Download all tarballs (.tgz files) for this release
             echo "  Downloading all tarballs..."
@@ -51,9 +50,14 @@ jobs:
                 # Extract each tarball to the version directory
                 for tarball in "$temp_dir"/*.tgz; do
                   if [ -f "$tarball" ]; then
-                    tarball_basename=$(basename "$tarball")
-                    echo "    Extracting $tarball_basename..."
-                    tar -xzf "$tarball" -C "$version_dir" --strip-components=1 2>&1 || echo "    ⚠ Failed to extract $tarball_basename"
+                    tarball_basename=$(basename "$tarball" .tgz)
+                    echo "    Extracting $tarball_basename.tgz..."
+                    
+                    # Create subdirectory for this tarball to avoid conflicts
+                    tarball_extract_dir="$version_dir/$tarball_basename"
+                    mkdir -p "$tarball_extract_dir"
+                    
+                    tar -xzf "$tarball" -C "$tarball_extract_dir" --strip-components=1 2>&1 || echo "    ⚠ Failed to extract $tarball_basename.tgz"
                   fi
                 done
                 
