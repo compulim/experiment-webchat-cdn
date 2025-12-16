@@ -123,7 +123,7 @@ jobs:
           
           # Copy contents from gh-pages directory to root
           echo "Copying contents from gh-pages directory..."
-          cp -r gh-pages/* .
+          cp -r gh-pages/. .
           
           # Add and commit changes
           git add .
@@ -145,6 +145,6 @@ jobs:
             --title "Update Web Chat CDN files" \
             --body "This PR updates the Web Chat CDN files from the latest releases of microsoft/botframework-webchat.
 
-          **Workflow run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          
-          The files have been extracted and organized by version under \`botframework-webchat/{version}/\`."
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          The files have been extracted and organized by version under botframework-webchat/{version}/."
