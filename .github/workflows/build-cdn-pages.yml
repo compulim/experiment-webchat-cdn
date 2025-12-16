@@ -31,16 +31,16 @@ jobs:
 
       - id: get-tags
         run: |
-          echo tags=$(cat releases.json | jq -r 'map({ tag: .tagName })') \
+          echo tags=$(cat releases.json | jq -c 'map({ tag: .tagName })') \
             | tee --append $GITHUB_OUTPUT
 
   download-release:
-    strategy:
-      matrix:
-        include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
     needs:
       - get-releases
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
 
     steps:
       - run: |
