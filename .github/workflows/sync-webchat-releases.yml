@@ -23,53 +23,53 @@ jobs:
           # Create gh-pages directory
           mkdir -p gh-pages/botframework-webchat
 
-          # Fetch all releases from microsoft/botframework-webchat using gh CLI
           echo "Fetching releases from microsoft/botframework-webchat..."
 
-          # Get list of all releases (tag names)
-          gh release list --repo microsoft/botframework-webchat --limit 1000 | while read -r line; do
-            # Extract tag name (first column)
-            tag_name=$(echo "$line" | awk '{print $1}')
+          # Use JSON output to robustly get all tag names
+          gh release list --repo microsoft/botframework-webchat --limit 1000 --json tagName --jq '.[].tagName' | while read -r tag_name; do
+            if [ -z "$tag_name" ]; then
+              continue
+            fi
 
             # Remove 'v' prefix if present (e.g., v4.18.0 -> 4.18.0)
             version="${tag_name#v}"
 
             echo "Processing release: $tag_name (version: $version)"
 
-            # Create version directory
             version_dir="gh-pages/botframework-webchat/$version"
             mkdir -p "$version_dir"
 
-            # Create unique temp directory for this release
-            temp_dir=$(mktemp -d -t "release-${version}-XXXXXX")
-
-            # Only need botframework-webchat-x.y.z.tgz
             asset="botframework-webchat-${version}.tgz"
             echo "  Downloading $asset..."
-            if gh release download "$tag_name" --repo microsoft/botframework-webchat --pattern "$asset" --dir "$temp_dir" 2>&1; then
-              if [ -f "$temp_dir/$asset" ]; then
+
+            # One temp dir per release to hold the tarball
+            temp_dir=$(mktemp -d)
+
+            if gh release download "$tag_name" \
+              --repo microsoft/botframework-webchat \
+              --pattern "$asset" \
+              --dir "$temp_dir" 2>&1; then
+
+              tarball="$temp_dir/$asset"
+
+              if [ -f "$tarball" ]; then
                 echo "  ✓ Downloaded $asset"
 
-                tarball="$temp_dir/$asset"
-                tarball_basename=$(basename "$tarball" .tgz)
-                echo "    Extracting $tarball_basename.tgz..."
-
-                # Create subdirectory for this tarball to avoid conflicts
-                tarball_extract_dir="$version_dir/$tarball_basename"
-                mkdir -p "$tarball_extract_dir"
-
-                tar -xzf "$tarball" -C "$tarball_extract_dir" --strip-components=1 2>&1 || echo "    ⚠ Failed to extract $tarball_basename.tgz"
-
-                echo "  ✓ Completed $version"
+                # Extract only dist/ contents and strip the dist/ prefix
+                echo "    Extracting dist/ from $asset into $version_dir (stripping dist/)..."
+                if tar -xzf "$tarball" -C "$version_dir" --strip-components=1 'dist/*' 2>&1; then
+                  echo "  ✓ Completed $version"
+                else
+                  echo "  ⚠ Failed to extract dist/ from $asset for $tag_name"
+                  rm -rf "$version_dir"
+                fi
               else
                 echo "  ⚠ Asset $asset not found for $tag_name"
-                # Clean up the empty directory
-                rmdir "$version_dir" 2>/dev/null || true
+                rm -rf "$version_dir"
               fi
             else
               echo "  ⚠ Failed to download $asset for $tag_name"
-              # Clean up the empty directory
-              rmdir "$version_dir" 2>/dev/null || true
+              rm -rf "$version_dir"
             fi
 
             # Clean up temp directory
@@ -159,4 +159,4 @@ jobs:
 
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-          The files have been extracted and organized by version under botframework-webchat/{version}/."
+          The files have been extracted and organized by version under botframework-webchat/{version}/, keeping only dist/ contents."
