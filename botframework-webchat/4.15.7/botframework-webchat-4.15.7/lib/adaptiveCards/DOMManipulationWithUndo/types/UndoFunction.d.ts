@@ -1,0 +1,3 @@
+declare type UndoFunction = () => void;
+export type { UndoFunction };
+//# sourceMappingURL=UndoFunction.d.ts.map
