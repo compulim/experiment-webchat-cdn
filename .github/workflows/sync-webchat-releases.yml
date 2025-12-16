@@ -55,9 +55,10 @@ jobs:
               if [ -f "$tarball" ]; then
                 echo "  ✓ Downloaded $asset"
 
-                # Extract only dist/ contents and strip the dist/ prefix
-                echo "    Extracting dist/ from $asset into $version_dir (stripping dist/)..."
-                if tar -xzf "$tarball" -C "$version_dir" --strip-components=1 'dist/*' 2>&1; then
+                # Extract only package/dist/ contents and strip the dist/ prefix
+                echo "    Extracting package/dist/ from $asset into $version_dir (stripping package/dist/)..."
+                if tar -xzf "$tarball" -C "$version_dir" --strip-components=2 'package/dist/*' 2>&1; then
+                  rm "$version_dir/stats.json"
                   echo "  ✓ Completed $version"
                 else
                   echo "  ⚠ Failed to extract dist/ from $asset for $tag_name"
