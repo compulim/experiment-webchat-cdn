@@ -6,83 +6,78 @@ on:
 jobs:
   sync-releases:
     runs-on: ubuntu-latest
-    
+
     permissions:
-      contents: write
-      pull-requests: write
-    
+      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Fetch and extract releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+
           # Create gh-pages directory
           mkdir -p gh-pages/botframework-webchat
-          
+
           # Fetch all releases from microsoft/botframework-webchat using gh CLI
           echo "Fetching releases from microsoft/botframework-webchat..."
-          
+
           # Get list of all releases (tag names)
           gh release list --repo microsoft/botframework-webchat --limit 1000 | while read -r line; do
             # Extract tag name (first column)
             tag_name=$(echo "$line" | awk '{print $1}')
-            
+
             # Remove 'v' prefix if present (e.g., v4.18.0 -> 4.18.0)
             version="${tag_name#v}"
-            
+
             echo "Processing release: $tag_name (version: $version)"
-            
+
             # Create version directory
             version_dir="gh-pages/botframework-webchat/$version"
             mkdir -p "$version_dir"
-            
+
             # Create unique temp directory for this release
             temp_dir=$(mktemp -d -t "release-${version}-XXXXXX")
-            
-            # Download all tarballs (.tgz files) for this release
-            echo "  Downloading all tarballs..."
-            if gh release download "$tag_name" --repo microsoft/botframework-webchat --pattern "*.tgz" --dir "$temp_dir" 2>&1; then
-              # Count downloaded files
-              tarball_count=$(find "$temp_dir" -name "*.tgz" | wc -l)
-              
-              if [ "$tarball_count" -gt 0 ]; then
-                echo "  ✓ Downloaded $tarball_count tarball(s)"
-                
-                # Extract each tarball to the version directory
-                for tarball in "$temp_dir"/*.tgz; do
-                  if [ -f "$tarball" ]; then
-                    tarball_basename=$(basename "$tarball" .tgz)
-                    echo "    Extracting $tarball_basename.tgz..."
-                    
-                    # Create subdirectory for this tarball to avoid conflicts
-                    tarball_extract_dir="$version_dir/$tarball_basename"
-                    mkdir -p "$tarball_extract_dir"
-                    
-                    tar -xzf "$tarball" -C "$tarball_extract_dir" --strip-components=1 2>&1 || echo "    ⚠ Failed to extract $tarball_basename.tgz"
-                  fi
-                done
-                
+
+            # We only need botframework-webchat-x.y.z.tgz
+            asset="botframework-webchat-${version}.tgz"
+            echo "  Downloading $asset..."
+            if gh release download "$tag_name" --repo microsoft/botframework-webchat --pattern "$asset" --dir "$temp_dir" 2>&1; then
+              if [ -f "$temp_dir/$asset" ]; then
+                echo "  ✓ Downloaded $asset"
+
+                tarball="$temp_dir/$asset"
+                tarball_basename=$(basename "$tarball" .tgz)
+                echo "    Extracting $tarball_basename.tgz..."
+
+                # Create subdirectory for this tarball to avoid conflicts
+                tarball_extract_dir="$version_dir/$tarball_basename"
+                mkdir -p "$tarball_extract_dir"
+
+                tar -xzf "$tarball" -C "$tarball_extract_dir" --strip-components=1 2>&1 || echo "    ⚠ Failed to extract $tarball_basename.tgz"
+
                 echo "  ✓ Completed $version"
               else
-                echo "  ⚠ No tarballs found for $tag_name"
+                echo "  ⚠ Asset $asset not found for $tag_name"
                 # Clean up the empty directory
                 rmdir "$version_dir" 2>/dev/null || true
               fi
             else
-              echo "  ⚠ Failed to download tarballs for $tag_name"
+              echo "  ⚠ Failed to download $asset for $tag_name"
               # Clean up the empty directory
               rmdir "$version_dir" 2>/dev/null || true
             fi
-            
+
             # Clean up temp directory
             rm -rf "$temp_dir"
           done
-          
+
           echo "All releases processed."
-      
+
       - name: Create zip archive
         run: |
           echo "Creating zip archive of gh-pages directory..."
@@ -91,60 +86,113 @@ jobs:
           cd ..
           echo "Archive created: gh-pages.zip"
           ls -lh gh-pages.zip
-      
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: gh-pages
           path: gh-pages.zip
           retention-days: 90
-      
-      - name: Create pull request to gh-pages branch
+
+  create-pr:
+    runs-on: ubuntu-latest
+    needs: sync-releases
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gh-pages
+          path: ${{ runner.temp }}/artifacts
+
+      - name: Prepare content from artifact
+        run: |
+          set -euo pipefail
+          CONTENT_DIR="${{ runner.temp }}/gh-pages-content"
+          mkdir -p "$CONTENT_DIR"
+          unzip -q "${{ runner.temp }}/artifacts/gh-pages.zip" -d "$CONTENT_DIR"
+          echo "Prepared content at $CONTENT_DIR"
+
+      - name: Create pull request or bootstrap gh-pages
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Create a unique branch name for this update
           BRANCH_NAME="update-gh-pages-$(date +%Y%m%d-%H%M%S)"
-          
+
           # Check if gh-pages branch exists remotely
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             echo "gh-pages branch exists, checking it out..."
             git fetch origin gh-pages
             git checkout -b "$BRANCH_NAME" origin/gh-pages
-          else
-            echo "gh-pages branch does not exist, creating orphan branch..."
-            git checkout --orphan "$BRANCH_NAME"
-            git rm -rf . || true
-          fi
-          
-          # Copy contents from gh-pages directory to root
-          echo "Copying contents from gh-pages directory..."
-          cp -r gh-pages/. .
-          
-          # Add and commit changes
-          git add .
-          
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          
-          git commit -m "Update Web Chat CDN files from microsoft/botframework-webchat releases"
-          
-          # Push the branch
-          git push origin "$BRANCH_NAME"
-          
-          # Create pull request
-          gh pr create \
-            --base gh-pages \
-            --head "$BRANCH_NAME" \
-            --title "Update Web Chat CDN files" \
-            --body "This PR updates the Web Chat CDN files from the latest releases of microsoft/botframework-webchat.
+
+            # Copy contents from prepared content directory to repo root
+            echo "Copying contents from prepared content directory..."
+            cp -r "${{ runner.temp }}/gh-pages-content/." .
+
+            # Add and commit changes (no deletions assumed)
+            git add .
+            if git diff --staged --quiet; then
+              echo "No changes to commit"
+              exit 0
+            fi
+
+            git commit -m "Update Web Chat CDN files from microsoft/botframework-webchat releases"
+
+            # Push the branch
+            git push origin "$BRANCH_NAME"
+
+            # Create pull request
+            gh pr create \
+              --base gh-pages \
+              --head "$BRANCH_NAME" \
+              --title "Update Web Chat CDN files" \
+              --body "This PR updates the Web Chat CDN files from the latest releases of microsoft/botframework-webchat.
 
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           The files have been extracted and organized by version under botframework-webchat/{version}/."
+          else
+            echo "gh-pages branch does not exist; bootstrapping it with initial commit (no PR needed)..."
+
+            # Ensure we can push using the token
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+
+            # Create an orphan gh-pages branch
+            git checkout --orphan gh-pages
+
+            # Clear any existing files from the working tree to avoid polluting gh-pages
+            git rm -rf . || true
+            git clean -fdx || true
+
+            # Copy contents from prepared content directory
+            echo "Copying contents from prepared content directory..."
+            cp -r "${{ runner.temp }}/gh-pages-content/." .
+
+            # Commit and push initial gh-pages branch
+            git add .
+            if git diff --staged --quiet; then
+              echo "No changes to commit for initial gh-pages"
+              exit 0
+            fi
+
+            git commit -m "Initialize gh-pages with Web Chat CDN files from microsoft/botframework-webchat releases"
+            git push -u origin gh-pages
+
+            echo "gh-pages branch created and populated. Future runs will open PRs against gh-pages."
+          fi
