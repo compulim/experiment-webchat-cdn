@@ -141,7 +141,7 @@ jobs:
 
       - name: Copy bundles to botframework-webchat@x.y.z
         run: |
-          find artifact -mindepth 1 -maxdepth 1 -type d | while read dir; do
+          find -mindepth 1 -maxdepth 1 -type d | while read dir; do
             version=$(basename "$dir")
 
             target="${{ github.workspace }}/repo/botframework-webchat@$version"
@@ -153,7 +153,7 @@ jobs:
 
       - name: Copy bundles to botframework-webchat/x.y.z
         run: |
-          find artifact -mindepth 1 -maxdepth 1 -type d | while read dir; do
+          find -mindepth 1 -maxdepth 1 -type d | while read dir; do
             version=$(basename "$dir")
 
             target="${{ github.workspace }}/repo/botframework-webchat/$version"
