@@ -37,7 +37,7 @@ jobs:
 
   download:
     continue-on-error: true
-    name: Download bundles from GitHub Release
+    name: Download bundles
     needs:
       - get-releases
     runs-on: ubuntu-latest
@@ -46,6 +46,11 @@ jobs:
         include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
 
     steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        name: View release
+        run: gh release view v${{ matrix.tag }}
+
       - name: Create directory
         run: mkdir -p dist/${{ matrix.tag }}/
 
