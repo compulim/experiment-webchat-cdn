@@ -44,8 +44,8 @@ jobs:
 
           echo tags=$(cat releases.json | jq --arg latestTag "$latest_tag" -c '
             map({
-              isLatest: (.tagName == $latestTag),
-              tag: (.tagName | sub("^v"; ""))
+              tag: (.tagName | sub("^v"; "")),
+              distTag: (if .tagName == $latestTag then "latest" else "" end)
             })') | tee --append $GITHUB_OUTPUT
 
   download-bundle:
@@ -92,10 +92,11 @@ jobs:
             --pattern *.js*.txt \
             --repo microsoft/botframework-webchat
 
-      - if: steps.check-eligibility.outputs.eligible == 'true' && matrix.isLatest == 'true'
+      - if: steps.check-eligibility.outputs.eligible == 'true' && matrix.distTag != ''
+        name: Clone for dist-tag ${{ matrix.distTag }}
         run: |
-          mkdir -p dist/latest/
-          cp dist/${{ matrix.tag }}/** dist/latest/
+          mkdir -p dist/${{ matrix.distTag }}/
+          cp dist/${{ matrix.tag }}/** dist/${{ matrix.distTag }}/
 
       - if: steps.check-eligibility.outputs.eligible == 'true'
         name: List files
