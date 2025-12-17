@@ -118,6 +118,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          path: repo
           ref: gh-pages
 
       - id: setup-repository
@@ -131,12 +132,40 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
           echo branch-name=$BRANCH_NAME | tee --append $GITHUB_OUTPUT
+        working-directory: repo/
 
       - uses: actions/download-artifact@v6
         with:
           name: dist
+          path: artifact
 
-      - run: ls -laR
+      - name: Copy bundles to botframework-webchat@x.y.z
+        run: |
+          find artifact -mindepth 1 -maxdepth 1 -type d | while read dir; do
+            version=$(basename "$dir")
+
+            target="${{ github.workspace }}/repo/botframework-webchat@$version"
+
+            mkdir -p $target
+            cp -r $dir/* $target
+          done
+        working-directory: artifact
+
+      - name: Copy bundles to botframework-webchat/x.y.z
+        run: |
+          find artifact -mindepth 1 -maxdepth 1 -type d | while read dir; do
+            version=$(basename "$dir")
+
+            target="${{ github.workspace }}/repo/botframework-webchat/$version"
+
+            mkdir -p $target
+            cp -r $dir/* $target
+          done
+        working-directory: artifact
+
+      - name: List repository content
+        run: ls -laR
+        working-directory: repo/
 
       - env:
           GH_TOKEN: ${{ github.token }}
@@ -164,3 +193,4 @@ jobs:
             --body "This PR updates the CDN files from microsoft/botframework-webchat.
 
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.") | tee --append $GITHUB_OUTPUT
+        working-directory: repo/
