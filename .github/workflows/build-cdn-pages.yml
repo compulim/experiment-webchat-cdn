@@ -51,11 +51,28 @@ jobs:
         name: View release
         run: gh release view v${{ matrix.tag }} --repo microsoft/botframework-webchat
 
-      - name: Create directory
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts
+
+      - id: check-eligibility
+        name: Check version eligibility
+        run: |
+          echo Only versions \> 0.10.* are supported on CDN.
+
+          version=${{ matrix.tag }}
+
+          npx semver $version --range \>0.10
+
+          echo eligible=$([[ $? -eq 0 ]] && echo true || echo false) | tee --append $GITHUB_OUTPUT
+
+      - if: steps.check-eligibility.outputs.eligible
+        name: Create directory
         run: mkdir -p dist/${{ matrix.tag }}/
 
       - env:
           GH_TOKEN: ${{ github.token }}
+        if: steps.check-eligibility.outputs.eligible
         name: Download tarball
         run: |
           gh release download \
@@ -66,10 +83,12 @@ jobs:
             --pattern *.js*.txt \
             --repo microsoft/botframework-webchat
 
-      - name: List files
+      - if: steps.check-eligibility.outputs.eligible
+        name: List files
         run: ls -laR dist/
 
-      - name: Upload artifact
+      - if: steps.check-eligibility.outputs.eligible
+        name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: dist-${{ matrix.tag }}
