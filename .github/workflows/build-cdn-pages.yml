@@ -30,19 +30,29 @@ jobs:
 
       - id: get-tags
         run: |
-          echo tags=$(cat releases.json | jq -c 'map({ from: (if .tagName[0:2] == "v4" and .tagName >= "4.15.3" then "tarball" else "github release" end), tag: (.tagName | sub("^v"; "")) })') \
+          echo tags=$(cat releases.json | jq -c '{
+            fromTarball:
+              map(
+                select(.tagName[0:2] == "v4" and .tagName >= "4.15.3") |
+                { tag: (.tagName | sub("^v"; "")) }
+              ),
+            fromGitHubRelease:
+              map(
+                select(.tagName[0:2] != "v4" or .tagName < "4.15.3") |
+                { tag: (.tagName | sub("^v"; "")) }
+              )
+          }') \
             | tee --append $GITHUB_OUTPUT
 
   download-from-tarball:
     continue-on-error: true
-    if: matrix.from == 'tarball'
     name: Download bundles from tarball
     needs:
       - get-releases
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
+        include: ${{ fromJSON(needs.get-releases.outputs.tags.fromTarball) }}
 
     steps:
       - name: Create directory
@@ -80,14 +90,13 @@ jobs:
 
   download-from-github:
     continue-on-error: true
-    if: matrix.from == 'tarball'
     name: Download bundles from GitHub Release
     needs:
       - get-releases
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
+        include: ${{ fromJSON(needs.get-releases.outputs.tags.fromGitHubRelease) }}
 
     steps:
       - name: Create directory
