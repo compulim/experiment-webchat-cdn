@@ -55,7 +55,7 @@ jobs:
         run: |
           mkdir -p dist/${{ matrix.tag }}/
 
-          tar \\
+          tar \
             -xzf $(ls -1 *.tgz) \
             --directory=dist/${{ matrix.tag }}/ \
             --enable-wildcards \
