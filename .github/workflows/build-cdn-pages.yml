@@ -43,5 +43,27 @@ jobs:
         include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
 
     steps:
-      - run: |
-          echo ${{ matrix.tag }}
+      - name: Download tarball
+        run: |
+          gh release download
+            --archive tar.gz \
+            --pattern botframework-webchat-${{ matrix.tag }}.tgz \
+            --repo microsoft/botframework-webchat
+      - name: Extract tarball
+        run: |
+          mkdir dist/${{ matrix.tag }}
+
+          tar \\
+            -xzf $(ls -1 *.tgz) \
+            --directory=dist/${{ matrix.tag }} \
+            --enable-wildcards \
+            --exclude=stats.json \
+            --strip-components=2 package/dist/**
+
+          ls -laR
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: dist-${{ matrix.tag }}
+          path: dist/**
