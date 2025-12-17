@@ -112,7 +112,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        ref: gh-pages
+        with:
+          ref: gh-pages
 
       - id: setup-repository
         name: Setup repository
