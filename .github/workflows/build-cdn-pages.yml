@@ -3,8 +3,7 @@ name: Build Pages for CDN
 on:
   workflow_dispatch: {}
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   get-releases:
@@ -43,7 +42,9 @@ jobs:
         include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
 
     steps:
-      - name: Download tarball
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        name: Download tarball
         run: |
           gh release download
             --archive tar.gz \
