@@ -44,7 +44,7 @@ jobs:
 
           echo tags=$(cat releases.json | jq --arg latestTag "$latest_tag" -c '
             map({
-              isLatest: .tagName == $latestTag,
+              isLatest: (.tagName == $latestTag),
               tag: (.tagName | sub("^v"; ""))
             })') | tee --append $GITHUB_OUTPUT
 
