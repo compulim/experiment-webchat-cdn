@@ -30,8 +30,8 @@ jobs:
 
       - id: get-tags
         run: |
-          echo tags=$(cat releases.json | jq -c 'map({ tag: .tagName })') \
-            | tee --append $GITHUB_OUTPUT
+          echo tags=$(cat releases.json | jq -c 'map({ tag: (.tagName | sub("^v"; "")) })') \
+                | tee --append $GITHUB_OUTPUT
 
   download-release:
     needs:
