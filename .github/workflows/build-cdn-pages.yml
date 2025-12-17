@@ -26,7 +26,7 @@ jobs:
       - name: Find latest release
         run: |
           cat releases.json | \
-            jq -r . 'map(select(.isLatest and not .isPrerelease)) | .[0]' | \
+            jq -r 'map(select(.isLatest and (.isPrerelease | not))) | .[0]' | \
             tee latest-release.json
 
       - uses: actions/upload-artifact@v6
