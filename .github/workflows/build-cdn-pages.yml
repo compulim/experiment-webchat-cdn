@@ -112,6 +112,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        ref: gh-pages
 
       - id: setup-repository
         name: Setup repository
@@ -121,7 +122,7 @@ jobs:
 
           BRANCH_NAME="update-gh-pages-$(date +%Y%m%d-%H%M%S)"
 
-          git checkout -b "$BRANCH_NAME" origin/gh-pages
+          git checkout -b "$BRANCH_NAME"
 
           echo branch-name=$BRANCH_NAME | tee --append $GITHUB_OUTPUT
 
