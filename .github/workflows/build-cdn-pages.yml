@@ -38,7 +38,7 @@ jobs:
 
       - id: get-tags
         run: |
-          latest_tag=$(cat latest-release.json | .tagName)
+          latest_tag=$(cat latest-release.json | jq -r '.tagName')
 
           echo Latest tag is $latest_tag.
 
