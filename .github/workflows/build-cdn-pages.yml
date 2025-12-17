@@ -62,13 +62,13 @@ jobs:
 
           echo eligible=$([[ $? -eq 0 ]] && echo true || echo false) | tee --append $GITHUB_OUTPUT
 
-      - if: steps.check-eligibility.outputs.eligible
+      - if: steps.check-eligibility.outputs.eligible == 'true'
         name: Create directory
         run: mkdir -p dist/${{ matrix.tag }}/
 
       - env:
           GH_TOKEN: ${{ github.token }}
-        if: steps.check-eligibility.outputs.eligible
+        if: steps.check-eligibility.outputs.eligible == 'true'
         name: Download tarball
         run: |
           gh release download \
@@ -79,11 +79,11 @@ jobs:
             --pattern *.js*.txt \
             --repo microsoft/botframework-webchat
 
-      - if: steps.check-eligibility.outputs.eligible
+      - if: steps.check-eligibility.outputs.eligible == 'true'
         name: List files
         run: ls -laR dist/
 
-      - if: steps.check-eligibility.outputs.eligible
+      - if: steps.check-eligibility.outputs.eligible == 'true'
         name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
