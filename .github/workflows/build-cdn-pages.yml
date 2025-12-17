@@ -49,7 +49,7 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         name: View release
-        run: gh release view v${{ matrix.tag }}
+        run: gh release view v${{ matrix.tag }} --repo microsoft/botframework-webchat
 
       - name: Create directory
         run: mkdir -p dist/${{ matrix.tag }}/
