@@ -30,11 +30,13 @@ jobs:
 
       - id: get-tags
         run: |
-          echo tags=$(cat releases.json | jq -c 'map({ tag: (.tagName | sub("^v"; "")) })') \
-                | tee --append $GITHUB_OUTPUT
+          echo tags=$(cat releases.json | jq -c 'map({ from: (if .tagName[0:2] == "v4" and .tagName >= "4.15.3" then "tarball" else "github release" end), tag: (.tagName | sub("^v"; "")) })') \
+            | tee --append $GITHUB_OUTPUT
 
-  download-release:
+  download-from-tarball:
     continue-on-error: true
+    if: matrix.from == 'tarball'
+    name: Download bundles from tarball
     needs:
       - get-releases
     runs-on: ubuntu-latest
@@ -43,6 +45,9 @@ jobs:
         include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
 
     steps:
+      - name: Create directory
+        run: mkdir -p dist/${{ matrix.tag }}/
+
       - env:
           GH_TOKEN: ${{ github.token }}
         name: Download tarball
@@ -57,8 +62,6 @@ jobs:
 
       - name: Extract tarball
         run: |
-          mkdir -p dist/${{ matrix.tag }}/
-
           tar \
             -xzf $(ls -1 *.tgz) \
             --directory=dist/${{ matrix.tag }}/ \
@@ -67,7 +70,41 @@ jobs:
             --wildcards \
             package/dist/**
 
-          ls -laR
+          ls -laR dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: dist-${{ matrix.tag }}
+          path: dist/**
+
+  download-from-github:
+    continue-on-error: true
+    if: matrix.from == 'tarball'
+    name: Download bundles from GitHub Release
+    needs:
+      - get-releases
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
+
+    steps:
+      - name: Create directory
+        run: mkdir -p dist/${{ matrix.tag }}/
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        name: Download tarball
+        run: |
+          gh release download \
+            v${{ matrix.tag }} \
+            --dir dist/${{ matrix.tag }} \
+            --pattern *.js* \
+            --repo microsoft/botframework-webchat
+
+      - name: List files
+        run: ls -laR dist/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
