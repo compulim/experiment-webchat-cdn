@@ -115,6 +115,18 @@ jobs:
         with:
           path: dist
 
+      - id: setup-repository
+        name: Setup repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH_NAME="update-gh-pages-$(date +%Y%m%d-%H%M%S)"
+
+          git checkout -b "$BRANCH_NAME" origin/gh-pages
+
+          echo branch-name=$BRANCH_NAME | tee --append $GITHUB_OUTPUT
+
       - uses: actions/download-artifact@v6
         with:
           name: dist
@@ -123,12 +135,7 @@ jobs:
 
       - name: Create pull request
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          BRANCH_NAME="update-gh-pages-$(date +%Y%m%d-%H%M%S)"
-
-          git checkout -b "$BRANCH_NAME" origin/gh-pages
+          BRANCH_NAME=${{ steps.setup-repository.outputs.branch-name }}
 
           git add .
 
