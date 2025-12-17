@@ -35,7 +35,7 @@ jobs:
               tag: (.tagName | sub("^v"; ""))
             })') | tee --append $GITHUB_OUTPUT
 
-  download:
+  download-bundle:
     continue-on-error: true
     name: Download bundles
     needs:
@@ -89,3 +89,64 @@ jobs:
         with:
           name: dist-${{ matrix.tag }}
           path: dist/**
+
+  merge-artifact:
+    needs:
+      - download-bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/upload-artifact/merge@v4
+        with:
+          name: dist
+          pattern: dist-*
+          delete-merged: true
+
+  create-pull-request:
+    needs:
+      - merge-artifact
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: dist
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: dist
+
+      - run: ls -laR
+
+      - name: Create pull request
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH_NAME="update-gh-pages-$(date +%Y%m%d-%H%M%S)"
+
+          git checkout -b "$BRANCH_NAME" origin/gh-pages
+
+          git add .
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update CDN files from microsoft/botframework-webchat"
+
+          # Push the branch
+          git push origin "$BRANCH_NAME"
+
+          gh pr create \
+            --base gh-pages \
+            --head "$BRANCH_NAME" \
+            --title "Update CDN files" \
+            --body "This PR updates the CDN files from microsoft/botframework-webchat.
+
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}."
+        working-directory: dist/
