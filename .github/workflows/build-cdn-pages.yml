@@ -126,6 +126,7 @@ jobs:
           git checkout -b "$BRANCH_NAME" origin/gh-pages
 
           echo branch-name=$BRANCH_NAME | tee --append $GITHUB_OUTPUT
+        working-directory: dist
 
       - uses: actions/download-artifact@v6
         with:
