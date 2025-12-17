@@ -30,9 +30,10 @@ jobs:
 
       - id: get-tags
         run: |
-          echo tags=$(cat releases.json | jq -c '{
-            tag: (.tagName | sub("^v"; ""))
-          }') | tee --append $GITHUB_OUTPUT
+          echo tags=$(cat releases.json | jq -c '
+            map({
+              tag: (.tagName | sub("^v"; ""))
+            })') | tee --append $GITHUB_OUTPUT
 
   download:
     continue-on-error: true
