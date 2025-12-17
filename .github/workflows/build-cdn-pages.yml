@@ -91,6 +91,7 @@ jobs:
           path: dist/**
 
   merge-artifact:
+    name: Merge artifacts
     needs:
       - download-bundle
     runs-on: ubuntu-latest
@@ -103,6 +104,10 @@ jobs:
           delete-merged: true
 
   create-pull-request:
+    environment:
+      name: pull-request
+      url: ${{ steps.create-pull-request.outputs.url }}
+    name: Create pull request
     needs:
       - merge-artifact
     permissions:
@@ -135,6 +140,7 @@ jobs:
 
       - env:
           GH_TOKEN: ${{ github.token }}
+        id: create-pull-request
         name: Create pull request
         run: |
           BRANCH_NAME=${{ steps.setup-repository.outputs.branch-name }}
@@ -151,10 +157,10 @@ jobs:
           # Push the branch
           git push origin "$BRANCH_NAME"
 
-          gh pr create \
+          echo url=$(gh pr create \
             --base gh-pages \
             --head "$BRANCH_NAME" \
             --title "Update CDN files" \
             --body "This PR updates the CDN files from microsoft/botframework-webchat.
 
-          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}."
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.") | tee --append $GITHUB_OUTPUT
