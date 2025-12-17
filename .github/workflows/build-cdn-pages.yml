@@ -133,7 +133,9 @@ jobs:
 
       - run: ls -laR
 
-      - name: Create pull request
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        name: Create pull request
         run: |
           BRANCH_NAME=${{ steps.setup-repository.outputs.branch-name }}
 
