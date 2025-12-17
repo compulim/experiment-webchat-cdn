@@ -51,6 +51,9 @@ jobs:
             --pattern botframework-webchat-${{ matrix.tag }}.tgz \
             --repo microsoft/botframework-webchat
 
+      - name: List tarball content
+        run: tar -tf $(ls -1 *.tgz)
+
       - name: Extract tarball
         run: |
           mkdir -p dist/${{ matrix.tag }}/
