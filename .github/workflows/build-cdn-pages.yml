@@ -46,11 +46,6 @@ jobs:
         include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
 
     steps:
-      - env:
-          GH_TOKEN: ${{ github.token }}
-        name: View release
-        run: gh release view v${{ matrix.tag }} --repo microsoft/botframework-webchat
-
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -62,6 +57,7 @@ jobs:
 
           version=${{ matrix.tag }}
 
+          set +e
           npx semver $version --range \>0.10
 
           echo eligible=$([[ $? -eq 0 ]] && echo true || echo false) | tee --append $GITHUB_OUTPUT
