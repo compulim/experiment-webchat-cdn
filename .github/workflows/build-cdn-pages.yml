@@ -58,9 +58,10 @@ jobs:
           tar \
             -xzf $(ls -1 *.tgz) \
             --directory=dist/${{ matrix.tag }}/ \
-            --enable-wildcard \
             --exclude=stats.json \
-            --strip-components=2 package/dist/**
+            --strip-components=2 \
+            --wildcards \
+            package/dist/**
 
           ls -laR
 
