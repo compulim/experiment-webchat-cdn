@@ -1,4 +1,4 @@
-name: Build Pages for CDN
+name: 🚀 Build Pages for CDN
 
 on:
   workflow_dispatch: {}
@@ -173,6 +173,8 @@ jobs:
         name: Create pull request
         run: |
           BRANCH_NAME=${{ steps.setup-repository.outputs.branch-name }}
+
+          echo >.nojekyll
 
           git add .
 
