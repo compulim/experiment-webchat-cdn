@@ -53,11 +53,11 @@ jobs:
 
       - name: Extract tarball
         run: |
-          mkdir dist/${{ matrix.tag }}
+          mkdir -p dist/${{ matrix.tag }}/
 
           tar \\
             -xzf $(ls -1 *.tgz) \
-            --directory=dist/${{ matrix.tag }} \
+            --directory=dist/${{ matrix.tag }}/ \
             --enable-wildcards \
             --exclude=stats.json \
             --strip-components=2 package/dist/**
