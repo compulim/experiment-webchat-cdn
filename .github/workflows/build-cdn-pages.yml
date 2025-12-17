@@ -174,7 +174,7 @@ jobs:
         run: |
           BRANCH_NAME=${{ steps.setup-repository.outputs.branch-name }}
 
-          echo >.nojekyll
+          touch .nojekyll
 
           git add .
 
