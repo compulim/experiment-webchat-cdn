@@ -23,15 +23,28 @@ jobs:
             | jq -r '.' \
             | tee releases.json
 
+      - name: Find latest release
+        run: |
+          cat releases.json | \
+            jq -r . 'map(select(.isLatest and not .isPrerelease)) | .[0]' | \
+            tee latest-release.json
+
       - uses: actions/upload-artifact@v6
         with:
           name: releases
-          path: releases.json
+          path: |
+            latest-release.json
+            releases.json
 
       - id: get-tags
         run: |
-          echo tags=$(cat releases.json | jq -c '
+          latest_tag=$(cat latest-release.json | .tagName)
+
+          echo Latest tag is $latest_tag.
+
+          echo tags=$(cat releases.json | jq --arg latestTag "$latest_tag" -c '
             map({
+              isLatest: .tagName == $latestTag,
               tag: (.tagName | sub("^v"; ""))
             })') | tee --append $GITHUB_OUTPUT
 
@@ -78,6 +91,11 @@ jobs:
             --pattern *.js.map \
             --pattern *.js*.txt \
             --repo microsoft/botframework-webchat
+
+      - if: steps.check-eligibility.outputs.eligible == 'true' && matrix.isLatest == 'true'
+        run: |
+          mkdir -p dist/latest/
+          cp dist/${{ matrix.tag }}/** dist/latest/
 
       - if: steps.check-eligibility.outputs.eligible == 'true'
         name: List files
