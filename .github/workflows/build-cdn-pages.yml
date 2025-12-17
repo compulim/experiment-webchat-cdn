@@ -47,7 +47,6 @@ jobs:
         name: Download tarball
         run: |
           gh release download \
-            --archive tar.gz \
             --pattern botframework-webchat-${{ matrix.tag }}.tgz \
             --repo microsoft/botframework-webchat
 
