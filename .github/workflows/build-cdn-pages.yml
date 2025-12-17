@@ -41,8 +41,7 @@ jobs:
                 select(.tagName[0:2] != "v4" or .tagName < "4.15.3") |
                 { tag: (.tagName | sub("^v"; "")) }
               )
-          }') \
-            | tee --append $GITHUB_OUTPUT
+          }') | tee --append $GITHUB_OUTPUT
 
   download-from-tarball:
     continue-on-error: true
@@ -52,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJSON(needs.get-releases.outputs.tags.fromTarball) }}
+        include: ${{ fromJSON(needs.get-releases.outputs.tags).fromTarball }}
 
     steps:
       - name: Create directory
@@ -96,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJSON(needs.get-releases.outputs.tags.fromGitHubRelease) }}
+        include: ${{ fromJSON(needs.get-releases.outputs.tags).fromGitHubRelease }}
 
     steps:
       - name: Create directory
