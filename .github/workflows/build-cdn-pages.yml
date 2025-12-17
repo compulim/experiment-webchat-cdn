@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJSON(needs.get-releases.outputs.tags).fromGitHubRelease }}
+        include: ${{ fromJSON(needs.get-releases.outputs.tags) }}
 
     steps:
       - name: Create directory
