@@ -112,8 +112,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          path: dist
 
       - id: setup-repository
         name: Setup repository
@@ -126,7 +124,6 @@ jobs:
           git checkout -b "$BRANCH_NAME" origin/gh-pages
 
           echo branch-name=$BRANCH_NAME | tee --append $GITHUB_OUTPUT
-        working-directory: dist
 
       - uses: actions/download-artifact@v6
         with:
@@ -157,4 +154,3 @@ jobs:
             --body "This PR updates the CDN files from microsoft/botframework-webchat.
 
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}."
-        working-directory: dist/
