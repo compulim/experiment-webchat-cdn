@@ -46,10 +46,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         name: Download tarball
         run: |
-          gh release download
+          gh release download \
             --archive tar.gz \
             --pattern botframework-webchat-${{ matrix.tag }}.tgz \
             --repo microsoft/botframework-webchat
+
       - name: Extract tarball
         run: |
           mkdir dist/${{ matrix.tag }}
